@@ -1,5 +1,6 @@
 require 'active_support'
 require 'active_support/core_ext'
+require 'pry'
 
 module I18n
   module Backend
@@ -13,6 +14,7 @@ module I18n
 
       def lookup(locale, key, scope = [], options = {})
         result = super
+        binding.pry
 
         unless result
           normalized_key = I18n.normalize_keys(nil, key, scope)
@@ -37,7 +39,7 @@ module I18n
         compiled_result, had_to_compile_result = deep_compile(locale, result, options)
 
         if had_to_compile_result
-          cache_compiled_result(locale, key, compiled_result, scope, options)
+          #cache_compiled_result(locale, key, compiled_result, scope, options)
         end
 
         compiled_result
@@ -90,7 +92,7 @@ module I18n
           key == keys[-1] ? hash[key] = compiled_result : hash[key] = {}
         end
 
-        store_translations(locale, translation_hash, options)
+        #store_translations(locale, translation_hash, options)
       end
 
       def handle_interpolation_match(locale, embedded_token, options)
