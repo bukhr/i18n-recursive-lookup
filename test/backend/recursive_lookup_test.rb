@@ -157,3 +157,41 @@ class I18nBackendRecursiveLookupWithoutCacheTest < Test::Unit::TestCase
     assert_equal 'bar new_foo', I18n.t(:'bar.baz')
   end
 end
+
+class I18nBackendRecursiveLookupWithoutCacheAndFallbacksTest < Test::Unit::TestCase
+  class Backend < I18n::Backend::Simple
+    include I18n::Backend::Fallbacks
+    include I18n::Backend::RecursiveLookup
+  end
+
+  def setup
+    I18n.backend = Backend.new
+    I18n.available_locales = %w[en en-cl]
+    I18n.fallbacks = ['en']
+    I18n.default_locale = 'en'
+    I18n.locale = 'en-cl'
+    I18n.backend.disable_interpolation_cache
+    I18n.backend.store_translations('en',
+                                    name: 'notice',
+                                    greeting: {
+                                      alert: 'alert ${name}'
+                                    })
+    I18n.backend.store_translations('en-cl',
+                                    name: 'notice-cl')
+  end
+
+  def teardown
+    I18n.backend = nil
+    I18n.locale = 'en'
+  end
+
+  # When translating I18n.t(:greeting.alert) with es-cl, the referenced translation 'name' needs to be 'notice-cl' and not 'notice'
+  test 'if translation is not in the current locale and fallbacks, interpolated translations should look the setted locale first when translating hash' do
+    assert_equal({alert: 'alert notice-cl'}, I18n.t(:greeting))
+    assert_equal({alert: 'alert ${name}'}, I18n.backend.send(:translations)[:en][:greeting])
+  end
+
+  test 'if translation is not in the current locale and fallbacks, interpolated translations should look the setted locale first when translating string' do
+    assert_equal 'alert notice-cl', I18n.t(:'greeting.alert')
+  end
+end
