@@ -35,7 +35,10 @@ class I18nBackendRecursiveLookupTest < Test::Unit::TestCase
                                         precision: 3,
                                         significant: false
                                       }
-                                    })
+                                    },
+                                    simple_list: ['item 1', 'item 2', 'item 3'],
+                                    list_with_interpolation: ['hello ${foo}', 'goodbye ${foo}'],
+                                    nested_array: { items: ['value 1', 'value 2'] })
   end
 
   def teardown
@@ -47,7 +50,7 @@ class I18nBackendRecursiveLookupTest < Test::Unit::TestCase
   end
 
   test 'still fails for a missing key' do
-    assert_equal 'translation missing: en.missing_key', I18n.t(:missing_key)
+    assert_equal 'Translation missing: en.missing_key', I18n.t(:missing_key)
   end
 
   test 'does a lookup on an embedded key' do
@@ -100,8 +103,34 @@ class I18nBackendRecursiveLookupTest < Test::Unit::TestCase
   end
 
   test 'correctly fails for a hash reference that is not present' do
-    assert_equal 'translation missing: en.hash_lookup.deeper.not_there.really',
+    assert_equal 'Translation missing: en.hash_lookup.deeper.not_there.really',
                  I18n.t(:'hash_lookup.deeper.not_there.really')
+  end
+
+  test 'returns a simple array' do
+    result = I18n.t(:simple_list)
+    assert_equal Array, result.class
+    assert_equal ['item 1', 'item 2', 'item 3'], result
+  end
+
+  test 'processes array with interpolation' do
+    result = I18n.t(:list_with_interpolation)
+    assert_equal Array, result.class
+    assert_equal ['hello foo', 'goodbye foo'], result
+  end
+
+  test 'processes nested array within hash' do
+    result = I18n.t(:nested_array)
+    assert_equal Hash, result.class
+    assert_equal({ items: ['value 1', 'value 2'] }, result)
+  end
+
+  test 'stores a compiled array lookup' do
+    original_lookup = I18n::Backend::Simple.instance_method(:lookup).bind(I18n.backend)
+
+    result = I18n.t(:list_with_interpolation)
+    precompiled_result = original_lookup.call(:en, :list_with_interpolation)
+    assert_equal result, precompiled_result
   end
 end
 
@@ -120,7 +149,8 @@ class I18nBackendRecursiveLookupWithoutCacheTest < Test::Unit::TestCase
                                       boo: {
                                         baz: 'hoo ${bar.baz}'
                                       }
-                                    })
+                                    },
+                                    list_with_interpolation: ['hello ${foo}', 'goodbye ${foo}'])
   end
 
   def teardown
@@ -155,6 +185,13 @@ class I18nBackendRecursiveLookupWithoutCacheTest < Test::Unit::TestCase
                                     foo: 'new_foo')
 
     assert_equal 'bar new_foo', I18n.t(:'bar.baz')
+  end
+
+  test 'recursive translation of an array with cache disabled' do
+    assert_equal(['hello foo', 'goodbye foo'], I18n.t(:list_with_interpolation))
+
+    assert_equal(['hello ${foo}', 'goodbye ${foo}'],
+                 I18n.backend.send(:translations)[:en][:list_with_interpolation])
   end
 end
 
