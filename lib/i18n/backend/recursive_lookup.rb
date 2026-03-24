@@ -27,7 +27,7 @@ module I18n
       def lookup(locale, key, scope = [], options = {})
         result = super
 
-        return result unless (result.is_a?(String) or result.is_a?(Hash))
+        return result unless (result.is_a?(String) or result.is_a?(Hash) or result.is_a?(Array))
 
         compiled_result, had_to_compile_result = deep_compile(locale, result, options)
 
@@ -38,7 +38,7 @@ module I18n
         compiled_result
       end
 
-      #subject is hash or string
+      #subject is hash, array or string
       def deep_compile(locale, subject, options)
         # Prevent modifying the original hash if cache is not enabled
         subject = subject&.dup unless enable_interpolation_cache?
@@ -47,6 +47,14 @@ module I18n
           subject.each do |key, object|
             subject[key], _had_to_compile_result = deep_compile(locale, object, options)
           end
+        elsif subject.is_a?(Array)
+          had_any = false
+          subject = subject.map do |element|
+            compiled, had = deep_compile(locale, element, options)
+            had_any ||= had
+            compiled
+          end
+          [subject, had_any]
         else
           compile(locale, subject, options)
         end
